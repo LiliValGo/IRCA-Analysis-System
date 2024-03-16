@@ -11,6 +11,6 @@ Please input the value feature: 12.5
 
 You guessed: 12.5
 
-LOW RISK ```
+LOW RISK 
 
-## 
+##
