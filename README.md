@@ -6,17 +6,18 @@ This program implements the IRCA (Índice de Riesgo de Calidad del Agua) water q
 ## Implementation
 The program is implemented in Rust, a modern systems programming language. It uses the following libraries:
 
-std::io: For user input and output
-std::str: For parsing user input
+```std::io:``` For user input and output
+```std::str:``` For parsing user input
 
 ## Usage
 To use the program, simply input the value of the water quality feature you wish to classify. The program will then output the corresponding IRCA classification and risk level.
+
 ```IRCA CLASIFICATION
 
 Please input the value feature: 12.5
 
 You guessed: 12.5
 
-LOW RISK 
+LOW RISK```
 
 
