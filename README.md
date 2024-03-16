@@ -13,7 +13,3 @@ You guessed: 12.5
 
 LOW RISK```
 
-## Implementation
-The program is implemented in Rust, a modern systems programming language. It uses the following libraries:
-```std::io:``` For user input and output
-```std::str:``` For parsing user input
