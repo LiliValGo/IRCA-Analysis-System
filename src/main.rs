@@ -1,12 +1,31 @@
-use duckdb::{Connection, ToSql};
-use std::error::Error;
-use std::io;
-use std::io::Write;
+use chrono::prelude::*;
+use reqwest::Error;
+use serde::Deserialize;
+use duckdb::{Connection, ToSql, Result};
+use std::io::{self, Write};
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let conn = Connection::open("irca_db.duckdb")?;
+#[derive(Deserialize)]
+struct Location {
+    city: String,
+    region: String,
+    country: String,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Obtener la fecha y hora actuales
+    let local: DateTime<Local> = Local::now();
+    println!("Fecha y hora actuales: {}", local);
+
+    // Obtener la ubicación utilizando la API de IPinfo
+    let response = reqwest::get("https://ipinfo.io/json").await?;
+    let location: Location = response.json().await?;
+    println!("Ubicación: {}, {}, {}", location.city, location.region, location.country);
+
+    // Conectar a la base de datos de DuckDB en memoria
+    let conn = Connection::open_in_memory()?;
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS irca_db (
+        "CREATE TABLE irca_db (
             id INTEGER PRIMARY KEY,
             parameter TEXT,
             result_analysis TEXT,
@@ -91,6 +110,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut total_risk_score_considered: f32 = 0.0;
     let mut total_sample_risk_score: f32 = 0.0;
+    let mut count_samples = 0;
 
     while let Some(row) = rows.next()? {
         let id: i32 = row.get(0)?;
@@ -102,11 +122,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         total_risk_score_considered += risk_score_considered;
         total_sample_risk_score += sample_risk_score;
+        count_samples += 1;
 
         println!("ID: {}, Parameter: {}, Result Analysis: {}, Expressed As: {}, Risk Score Considered: {}, Sample Risk Score: {}",
                  id, parameter, result_analysis, expressed_as, risk_score_considered, sample_risk_score);
     }
 
+    let risk_status;
     if total_risk_score_considered != 0.0 {
         let user_input = (total_sample_risk_score / total_risk_score_considered) * 100.0;
         let risk_levels = vec![
@@ -116,22 +138,52 @@ fn main() -> Result<(), Box<dyn Error>> {
             (80.0, "HIGH RISK"),
         ];
 
-        let mut risk_status = "SANITARY UNFEASIBLE";
-        for &(threshold, status) in &risk_levels {
-            if user_input <= threshold {
-                risk_status = status;
-                break;
-            }
-        }
+        risk_status = risk_levels.iter().find(|&&(threshold, _)| user_input <= threshold).map(|&(_, status)| status).unwrap_or("SANITARY UNFEASIBLE");
         println!("Overall Risk Status: {}", risk_status);
         println!("User Input Result: {:.2}", user_input);
     } else {
         println!("No data to calculate risk.");
+        return Ok(());
     }
-    
+
+    // Guardar los resultados en la tabla montly_irca_results
+    let conn = Connection::open("irca_results_db.duckdb")?;
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS montly_irca_results (
+            id INTEGER PRIMARY KEY, 
+            year INTEGER,
+            dpto_code INTEGER,
+            dpto_description TEXT, 
+            town TEXT,
+            month TEXT,
+            count_samples INTEGER,
+            risk_level FLOAT,
+            risk_status TEXT
+        )", [],
+    )?;
+
+    let dpto_code = 12345; // Ejemplo de un código fijo para la región
+    let year = local.year();
+    let month = local.format("%B").to_string();
+
+    conn.execute(
+        "INSERT INTO montly_irca_results (id, year, dpto_code, dpto_description, town, month, count_samples, risk_level, risk_status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        &[
+            &1 as &dyn ToSql, // ID puede ser un contador si lo deseas
+            &year as &dyn ToSql,
+            &dpto_code as &dyn ToSql,
+            &location.region as &dyn ToSql,
+            &location.city as &dyn ToSql,
+            &month as &dyn ToSql,
+            &count_samples as &dyn ToSql,
+            &(total_sample_risk_score / total_risk_score_considered * 100.0) as &dyn ToSql,
+            &risk_status as &dyn ToSql,
+        ],
+    )?;
+
+    println!("Results stored in the monthly IRCA results database.");
     Ok(())
 }
-
 
 
 
