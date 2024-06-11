@@ -1,5 +1,4 @@
 use chrono::prelude::*;
-use reqwest::Error;
 use serde::Deserialize;
 use duckdb::{Connection, ToSql, Result};
 use std::io::{self, Write};
@@ -184,6 +183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Results stored in the monthly IRCA results database.");
     Ok(())
 }
+
 
 
 
