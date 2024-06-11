@@ -145,10 +145,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Guardar los resultados en la tabla montly_irca_results
+    // Guardar los resultados en la tabla monthly_irca_results
     let conn = Connection::open("irca_results_db.duckdb")?;
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS montly_irca_results (
+        "CREATE TABLE IF NOT EXISTS monthly_irca_results (
             id INTEGER PRIMARY KEY, 
             year INTEGER,
             dpto_code INTEGER,
@@ -161,14 +161,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )", [],
     )?;
 
+    // Obtener el id más alto actual y sumar 1
+    let mut stmt = conn.prepare("SELECT COALESCE(MAX(id), 0) + 1 FROM monthly_irca_results")?;
+    let mut rows = stmt.query([])?;
+    let result_id = if let Some(row) = rows.next()? {
+        row.get::<usize, i64>(0)?
+    } else {
+        1
+    };
+
     let dpto_code = 12345; // Ejemplo de un código fijo para la región
     let year = local.year();
     let month = local.format("%B").to_string();
 
     conn.execute(
-        "INSERT INTO montly_irca_results (id, year, dpto_code, dpto_description, town, month, count_samples, risk_level, risk_status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        "INSERT INTO monthly_irca_results (id, year, dpto_code, dpto_description, town, month, count_samples, risk_level, risk_status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         &[
-            &1 as &dyn ToSql, // ID puede ser un contador si lo deseas
+            &result_id as &dyn ToSql,
             &year as &dyn ToSql,
             &dpto_code as &dyn ToSql,
             &location.region as &dyn ToSql,
@@ -181,6 +190,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     println!("Results stored in the monthly IRCA results database.");
+
+    // Consulta y muestra los datos guardados en la base de datos irca_results_db.duckdb
+    let mut stmt = conn.prepare("SELECT * FROM monthly_irca_results")?;
+    let mut rows = stmt.query([])?;
+
+    println!("\nMonthly IRCA Results Data:");
+    while let Some(row) = rows.next()? {
+        let id: i32 = row.get(0)?;
+        let year: i32 = row.get(1)?;
+        let dpto_code: i32 = row.get(2)?;
+        let dpto_description: String = row.get(3)?;
+        let town: String = row.get(4)?;
+        let month: String = row.get(5)?;
+        let count_samples: i32 = row.get(6)?;
+        let risk_level: f32 = row.get(7)?;
+        let risk_status: String = row.get(8)?;
+
+        println!("ID: {}, Year: {}, Dpto Code: {}, Dpto Description: {}, Town: {}, Month: {}, Count Samples: {}, Risk Level: {:.2}, Risk Status: {}",
+                 id, year, dpto_code, dpto_description, town, month, count_samples, risk_level, risk_status);
+    }
+
     Ok(())
 }
 
