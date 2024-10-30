@@ -1,22 +1,35 @@
-# IRCA - Water Quality Classification Program in Rust
+# IRCA Data Input and Risk Analysis System
+This project is a command-line application designed for recording, analyzing, and assessing risk levels based on user-provided data entries and geolocation information. It collects various parameters and scores, storing them in an in-memory DuckDB database for immediate analysis and risk assessment.
 
-## Introduction
-This program implements the IRCA (Índice de Riesgo de Calidad del Agua) water quality classification system as defined by Colombian [RESOLUCION 2115 DE 2007](https://www.udea.edu.co/wps/wcm/connect/udea/c46bea38-2c19-4942-8b74-6475d1a36625/Resoluci%C3%B3n+2115+de+2007.pdf?MOD=AJPERES). The IRCA is an indicator that evaluates the quality of water for human consumption based on the results of physicochemical and microbiological characteristics.
+The application calculates an overall risk status based on sample data, determining qualitative levels like "No Risk" or "High Risk" and assigns a corresponding risk status. Monthly results are stored in a separate DuckDB file-based database for long-term tracking, allowing users to review past entries and calculated risk levels in a comprehensive report.
 
-## Implementation
-The program is implemented in Rust, a modern systems programming language. It uses the following libraries:
+## Features
+  * **Data Entry and Management:** Allows users to input various parameters, storing them in an in-memory DuckDB database.
+  * **Risk Analysis Calculation:** Based on data provided, the application calculates and assigns a risk status to each entry.
+  * **Automated Location Detection:**  Utilizes the IP info API to gather the user’s geographic location dynamically.
+  * **Persistent Data Storage:** Saves monthly risk assessments in a DuckDB file-based database, enabling long-term data tracking.
+  * **Comprehensive Reporting:** Outputs saved data entries, allowing users to review each entry with calculated risk levels and statuses.
 
-```std::io:``` For user input and output
+## Technical Requirements
+  * **Rust:** This project is built using Rust, so Rust must be installed.
+  * **DuckDB:** Provides an in-memory database and file-based storage.
+  * **reqwest:** Used for making asynchronous HTTP requests to retrieve location data.
+To install these dependencies, add the following to ```Cargo.toml```:
+```[dependencies]
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+duckdb = "0.4.0"
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1", features = ["full"] } 
+```
 
-```std::str:``` For parsing user input
+## Installation
+1. Clone the repository:
+   
+   ```git clone https://github.com/yourusername/irca-risk-analysis.git```
+2. Install dependencies:
+   
+   ```cargo build```
+3. Run the application
 
-## Usage
-To use the program, simply input the value of the water quality feature you wish to classify. The program will then output the corresponding IRCA classification and risk level.
-
-```IRCA CLASIFICATION
-
-Please input the value feature: 12.5
-
-You guessed: 12.5
-
-LOW RISK
+   ```cargo run```
